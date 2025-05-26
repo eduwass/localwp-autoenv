@@ -22,7 +22,34 @@ A shell module that automatically loads Local WordPress development environment 
 - 📊 **Environment Status**: Shows loaded versions of PHP, MySQL, WP-CLI, and Composer
 - 🎯 **Zero Configuration**: Works out of the box with Local by Flywheel
 
+> [!NOTE]
+> Currently tested on macOS only. Contributions for Windows and Linux support are welcome!
+
 ## Installation
+
+### Quick Install (One-liner)
+
+```bash
+curl -o ~/.localwp https://raw.githubusercontent.com/eduwass/localwp-autoenv/refs/heads/main/.localwp
+```
+
+Then add this to your `.zshrc` file (customize the username and paths as needed):
+```bash
+# LocalWP Configuration (customize these paths as needed)
+export LOCALWP_USERNAME="eduwass"
+export LOCALWP_SITES_DIR="/Users/eduwass/Sites"
+export LOCALWP_SSH_ENTRY_DIR="/Users/eduwass/Library/Application Support/Local/ssh-entry"
+
+# LocalWP: Auto-load Local WordPress environment for any site
+source ~/.localwp
+```
+
+Reload your shell:
+```bash
+source ~/.zshrc
+```
+
+### Manual Install
 
 1. Copy the `.localwp` file to your home directory:
    ```bash
