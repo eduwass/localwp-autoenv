@@ -1,0 +1,109 @@
+#!/usr/bin/env zsh
+# LocalWP Auto-Environment Loader
+# Automatically loads Local WordPress development environment when entering site directories
+# 
+# Configuration:
+# Set these variables before sourcing this file, or they will use defaults:
+# - LOCALWP_SITES_DIR: Directory where your Local sites are stored
+# - LOCALWP_SSH_ENTRY_DIR: Directory where Local stores SSH entry scripts
+# - LOCALWP_USERNAME: Your username (used for default paths)
+#
+# You can also create a ~/.localwp.config file to set these variables
+
+# Load configuration file if it exists
+[[ -f ~/.localwp.config ]] && source ~/.localwp.config
+
+# Set default configuration if not already set
+: ${LOCALWP_USERNAME:=$(whoami)}
+: ${LOCALWP_SITES_DIR:="/Users/$LOCALWP_USERNAME/Sites"}
+: ${LOCALWP_SSH_ENTRY_DIR:="/Users/$LOCALWP_USERNAME/Library/Application Support/Local/ssh-entry"}
+
+# Function to load Local WordPress environment
+function load_local_env() {
+    local current_dir="$PWD"
+    
+    # Check if we're in a Local site directory (including subdirectories)
+    if [[ "$current_dir" =~ ^${LOCALWP_SITES_DIR}/([^/]+)(/.*)?$ ]]; then
+        local site_name="${match[1]}"
+        local site_id=""
+        local site_root="$LOCALWP_SITES_DIR/$site_name"
+        
+        # Find the corresponding site ID by searching for the site path in ssh-entry scripts
+        # Try multiple path patterns that Local might use
+        for script in "$LOCALWP_SSH_ENTRY_DIR"/*.sh; do
+            if [[ -f "$script" ]]; then
+                # Check for various path patterns Local might use
+                if grep -q "cd \"$site_root\"" "$script" || \
+                   grep -q "cd \"$site_root/app/public\"" "$script" || \
+                   grep -q "cd '$site_root'" "$script" || \
+                   grep -q "cd '$site_root/app/public'" "$script" || \
+                   grep -q "$site_root" "$script"; then
+                    site_id=$(basename "$script" .sh)
+                    break
+                fi
+            fi
+        done
+        
+        if [[ -n "$site_id" && -f "$LOCALWP_SSH_ENTRY_DIR/$site_id.sh" ]]; then
+            # Check if this environment is already loaded
+            if [[ "$LOCAL_SITE_ID" != "$site_id" ]]; then
+                echo "🚀 Loading Local environment for: $site_name"
+                
+                # Clear any existing Local paths from PATH first
+                export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "Local" | tr '\n' ':' | sed 's/:$//')
+                
+                # Process the script line by line, executing export statements
+                while IFS= read -r line; do
+                    # Stop when we hit the cd command
+                    if [[ "$line" =~ ^cd ]]; then
+                        break
+                    fi
+                    
+                    # Skip comments and empty lines
+                    if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "${line// }" ]]; then
+                        continue
+                    fi
+                    
+                    # Process export statements (including PATH modifications)
+                    if [[ "$line" =~ ^export ]]; then
+                        # Execute the export statement
+                        eval "$line"
+                    fi
+                done < "$LOCALWP_SSH_ENTRY_DIR/$site_id.sh"
+                
+                # Set a marker so we know this environment is loaded
+                export LOCAL_SITE_ID="$site_id"
+                export LOCAL_SITE_NAME="$site_name"
+                
+                echo "✅ Local environment loaded for $site_name (ID: $site_id)"
+                echo "   PHP: $(php -r "echo PHP_VERSION;" 2>/dev/null || echo 'Not available')"
+                echo "   MySQL: $(mysql --version 2>/dev/null | awk '{print $3}' | sed 's/,$//' || echo 'Not available')"
+                echo "   WP-CLI: $(wp --version 2>/dev/null || echo 'Not available')"
+                echo "   Composer: $(composer --version 2>/dev/null | cut -d' ' -f3-4 || echo 'Not available')"
+            fi
+        fi
+    else
+        # If we're not in a Local site directory, clear the environment
+        if [[ -n "$LOCAL_SITE_ID" ]]; then
+            echo "🔄 Clearing Local environment (left $LOCAL_SITE_NAME)"
+            unset LOCAL_SITE_ID
+            unset LOCAL_SITE_NAME
+            unset MYSQL_HOME
+            unset PHPRC
+            unset WP_CLI_CONFIG_PATH
+            unset WP_CLI_DISABLE_AUTO_CHECK_UPDATE
+            unset MAGICK_CODER_MODULE_PATH
+            unset DISABLE_AUTO_TITLE
+            # Reset PATH to remove Local paths
+            export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "Local" | tr '\n' ':' | sed 's/:$//')
+        fi
+    fi
+}
+
+# Hook into directory changes
+function chpwd() {
+    load_local_env
+}
+
+# Also check when the shell starts
+load_local_env 
