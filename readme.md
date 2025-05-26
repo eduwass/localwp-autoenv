@@ -1,14 +1,19 @@
 <div align="center">
-  <img src="logo.png" alt="LocalWP Auto-Environment Loader" />
+  <img width="400" src="logo.png" alt="LocalWP Auto-Environment Loader" />
 </div>
 
-Stop clicking the 'Site Shell' button in Local.
-
-A shell module that automatically loads Local WordPress development environment settings when you navigate into your Local site directories.
+<br />
 
 <div align="center">
   <img src="demo.gif" alt="LocalWP Auto-Environment Loader" />
 </div>
+
+<br />
+
+**Stop clicking the 'Site Shell' button in Local.**
+
+A shell module that automatically loads Local WordPress development environment settings when you navigate into your Local site directories.
+
 
 ## Features
 
